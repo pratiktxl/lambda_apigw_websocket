@@ -3,39 +3,40 @@ import pymysql
 import os
 import boto3
 
-"""
-JSONs for testing using postman
+# Example JSON payloads for testing using Postman.
 
-{
-  "action": "sendMessage",
-  "value": "name"
-}
+# JSON for sending a message:
+# {
+#   "action": "sendMessage",
+#   "value": "name"
+# }
 
-{
-  "action": "getMessage",
-  "x": 3
-}
-"""
+# JSON for retrieving messages:
+# {
+#   "action": "getMessage",
+#   "x": 3
+# }
 
 def lambda_handler(event, context):
+    """Main Lambda function handler."""
     
+    # Parse the 'action' from the event body.
     action = json.loads(event.get('body', {})).get('action', '')
     
+    # Extract connection_id from the event.
     connection_id = event["requestContext"].get("connectionId")
+    print("connection_id", connection_id)
     
-    print("connection_id",connection_id)
-    
+    # Construct the endpoint URL for API Gateway.
     domain_name = event["requestContext"]["domainName"]
     stage = event["requestContext"]["stage"]
     endpoint_url = f"https://{domain_name}/{stage}"
-
     print(endpoint_url)
     
-    client = boto3.client("apigatewaymanagementapi", 
-                          endpoint_url=endpoint_url)
+    # Initialize boto3 client for API Gateway Management API.
+    client = boto3.client("apigatewaymanagementapi", endpoint_url=endpoint_url)
     
-    
-    
+    # Process request based on the action type.
     if action == 'sendMessage':
         return send_message(event, context)
     elif action == 'getMessage':
@@ -47,13 +48,17 @@ def lambda_handler(event, context):
         }
 
 def send_message(event, context):
+    """Handles the sendMessage action."""
+    
+    # Extract message value from the event.
     record_value = json.loads(event.get('body', {})).get('value', 'default_value')
 
+    # Get a database connection.
     connection = get_db_connection()
-    
-    print('sendMessage invoked');
+    print('sendMessage invoked')
 
     try:
+        # Insert the message into the database.
         with connection.cursor() as cursor:
             insert_sql = "INSERT INTO sample_table (name) VALUES (%s);"
             cursor.execute(insert_sql, (record_value,))
@@ -66,22 +71,26 @@ def send_message(event, context):
     finally:
         connection.close()
     
-    try:    
+    try:
+        # Notify the connected client about the message status.
         message = {"message": "Message sent", "last_inserted_id": last_id}
-        client.post_to_connection(Data=json.dumps(message), 
-                                  ConnectionId=connection_id)
+        client.post_to_connection(Data=json.dumps(message), ConnectionId=connection_id)
     except Exception as e:
-        # Handle exceptions
+        # Handle exceptions.
         print(f"Error: {str(e)}")  
 
 def get_message(event, context):
+    """Handles the getMessage action."""
+    
+    # Extract the number of messages to retrieve.
     num_records = int(json.loads(event.get('body', {})).get('x', 1))
 
+    # Get a database connection.
     connection = get_db_connection()
-    
     print('getMessage invoked')
 
     try:
+        # Retrieve messages from the database.
         with connection.cursor() as cursor:
             select_sql = "SELECT * FROM sample_table ORDER BY id DESC LIMIT %s;"
             cursor.execute(select_sql, (num_records,))
@@ -93,15 +102,16 @@ def get_message(event, context):
     finally:
         connection.close()
     
-    try:    
+    try:
+        # Notify the connected client about the retrieved messages.
         message = {"message": "Message retrieved", "records": records}
-        client.post_to_connection(Data=json.dumps(message), 
-                                  ConnectionId=connection_id)
+        client.post_to_connection(Data=json.dumps(message), ConnectionId=connection_id)
     except Exception as e:
-        # Handle exceptions
+        # Handle exceptions.
         print(f"Error: {str(e)}")
 
 def get_db_connection():
+    """Returns a database connection using environment variables."""
     return pymysql.connect(
         host=os.environ['DB_HOST'],
         user=os.environ['DB_USER'],
