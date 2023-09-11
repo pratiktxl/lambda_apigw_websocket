@@ -1,6 +1,6 @@
 # Lambda + API Gateway (WebSocket)
 
-## Layer - 
+## Layer
 pymysql - details to be added
 
 ## Example JSON payloads for testing using Postman.
