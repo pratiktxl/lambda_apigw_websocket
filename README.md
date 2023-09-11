@@ -5,7 +5,7 @@ It creates the live connection to read and write data to RDS MySQL via Lambda.
 ## Layer
 pymysql - details to be added
 
-## Example JSON payloads for testing using Postman.
+## Example JSON payloads for testing using Postman or other tools
 
  JSON for sending a message:
  
